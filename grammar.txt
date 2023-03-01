@@ -1,0 +1,112 @@
+
+top :
+    {[ component | enum | include_statement]}
+
+component :
+    Component Identifier decleration_bundle scope
+
+enum :
+    Enum "{" { Identifier "," } "}"
+    Enum "{" { Identifier "," } Identifier "}"
+
+include_statement :
+    Include Identifier ";"
+
+type :
+    [ UnsignedInt | SignedInt | Analog | Reset | Clock | Identifier ]
+    [ UnsignedInt | SignedInt | Analog | Reset | Clock | Identifier ] "[" Litteral "]"
+
+decleration :
+    Identifier ":" type
+
+decleration_bundle :
+    "(" { [ Flip decleration | decleration ] "," } ")"
+    "(" { [ Flip decleration | decleration ] "," } [ Flip decleration | decleration ] ")"
+
+decleration_statement :
+    Wire [ decleration | decleration_bundle ] ";"
+    Reg [ decleration | decleration_bundle ] "|" Clock ":" Identifier "|" [ Reset | Async Reset ] ":" Identifier "=" expression ";"
+    Component Identifier ":" Identifier ";"
+
+statement :
+    decleration_statement
+    assignment
+    if_block
+    switch_block
+    for_block
+    loop_block
+    clock_block
+    scope
+
+scope :
+    "{" {statement} "}"
+
+assignment :
+    Identifier = expression ";"
+
+if_block :
+    If expression statement
+
+if_else_block :
+    if_block else statement
+
+switch_block :
+    Switch expression "{" { [ Litteral | "_" ] ":" statement}
+
+loop_block :
+    Loop Identifier "=" expression Range expression statement
+
+for_block :
+    For Identifier ":" Identifier statement
+
+expression :
+    expression_atom
+    expression_unary
+    expression_term
+    expression_sum
+    expression_shift
+    expression_concatination
+    expression_comparison
+
+expression_comparison :
+    expression_concatination { [ "<" | ">" | "<=" | ">=" | "==" | "!=" ] expression_concatination}
+
+expression_concatination :
+    expression_logical { "|" expression_logical }
+
+expression_logical :
+    expression_shift { [ "and" | "or" | "xor" ] expression_shift }
+
+expression_shift :
+    expression_sum { [ ">>" | "<<" ] expression_sum }
+
+expression_sum :
+    expression_term { [ "+" | "-" ] expression_term }
+
+expression_term :
+    expression_unary { [ "*" | "/" | "%" ] expression_unary }
+
+expression_unary :
+    [ "!" | "-" ] expression_atom
+
+expression_atom :
+    "(" expression ")"
+    expression_bundle
+    if_else_operator
+    switch_operator
+    expression_scope
+    Litteral
+    Identifier
+
+expression_bundle :
+    "(" { Identifier expression "," } ")"
+    "(" { Identifier expression "," } Identifier expression ")"
+
+if_else_operator :
+    If expression statement else statement
+
+switch_operator :
+    Switch expression "{" { [ Litteral | "_" ] ":" expression}
+
+expression_scope
+    "{" {statement} expression "}"

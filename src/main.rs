@@ -1,7 +1,11 @@
+extern crate regex;
+
 use std::fs;
 use std::env;
 use std::process;
+
 mod lexer;
+mod parser;
 
 fn main() { 
     let path = if let Some(s) = env::args().nth(1) { s } else {
@@ -9,17 +13,20 @@ fn main() {
         process::exit(1);
     };
 
-    let mut input = match fs::read_to_string(path) {
+    let input = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Error when opening file: {e}");
             process::exit(1);
         }
     };
-
-    input.push(' ');
-    match lexer::lex(&input) {
-        Ok(tokens) => println!("{:?}", tokens),
+    
+    match lexer::specific::lex(&input) {
+        Ok(tokens) => {
+            for token in tokens.iter() {
+                println!("{:?}", token);
+            }
+        }
         Err(e) => eprintln!("{}", e),
     }
     

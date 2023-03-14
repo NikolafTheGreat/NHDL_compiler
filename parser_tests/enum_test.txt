@@ -1,0 +1,4 @@
+enum name {
+    variant1,
+    variant2
+}

@@ -1,0 +1,141 @@
+top : MyModule;
+
+const const1 : 2;
+
+module MyModule (input : (a : u<32>, b : s<3>,), flip output : s<3>) {
+    const const2 : 3;
+    enum enum1 {
+        variant
+    }
+    n <= 3+2+1*3;
+    if (2+1 > 2) {
+        n <- 2;
+    } else if (i < 3) {
+    }
+
+    loop (i : 2..3+2) {
+        n[2].knort <= 2;
+    }
+}
+
+/*
+OuterScope {
+    top_module: "MyModule",
+    internals: [
+        ConstantDeclaration {
+            constant_name: "const1",
+            value: Number(2) 
+        },
+        ModuleDeclaration {
+            module_name: "MyModule",
+            generic_names: _,
+            io: TypeBundle([
+                (false,
+                "input",
+                TypeBundle([
+                    (false,
+                    "a",
+                    UnsignedType(Number(32))),
+                    (false,
+                    "b",
+                    SignedType(Number(3)))
+                ])),
+                (true,
+                "output",
+                SignedType(Number(3)))
+            ]),
+            body: Scope {
+                internals: [
+                    ConstantDeclaration {
+                        constant_name: "const2",
+                        value: Number(3) 
+                    },
+                    EnumDeclaration {
+                        enum_name: "enum1",
+                        variant_names: [
+                            "variant"
+                        ] 
+                    },
+                    StrongConnection {
+                        lhs: Target([
+                            (Identifier("n"),
+                            None)
+                        ]),
+                        rhs: BinaryOperation {
+                            lhs: BinaryOperation {
+                                lhs: Number(3),
+                                operation: Plus,
+                                rhs: Number(2) 
+                            },
+                            operation: Plus,
+                            rhs: BinaryOperation {
+                                lhs: Number(1),
+                                operation: Multiply,
+                                rhs: Number(3) 
+                            } 
+                        } 
+                    },
+                    If {
+                        condition: BinaryOperation {
+                            lhs: BinaryOperation {
+                                lhs: Number(2),
+                                operation: Plus,
+                                rhs: Number(1) 
+                            },
+                            operation: LessThan,
+                            rhs: Number(2) 
+                        },
+                        true_body: Scope {
+                            internals: [
+                                WeakConnection {
+                                    lhs: Target([
+                                        (Identifier("n"),
+                                        None)
+                                    ]),
+                                    rhs: Number(2) 
+                                }
+                            ] 
+                        },
+                        false_body: Some(If {
+                            condition: BinaryOperation {
+                                lhs: Target([
+                                    (Identifier("i"),
+                                    None)
+                                ]),
+                                operation: GreaterThan,
+                                rhs: Number(3) 
+                            },
+                            true_body: Scope {
+                                internals: _ 
+                            },
+                            false_body: None 
+                        }) 
+                    },
+                    Loop {
+                        variable_name: "i",
+                        from: Number(2),
+                        to: BinaryOperation {
+                            lhs: Number(3),
+                            operation: Plus,
+                            rhs: Number(2) 
+                        },
+                        body: Scope {
+                            internals: [
+                                StrongConnection {
+                                    lhs: Target([
+                                        (Identifier("n"),
+                                        Some(Number(2))),
+                                        (Identifier("knort"),
+                                        None)
+                                    ]),
+                                    rhs: Number(2) 
+                                }
+                            ] 
+                        } 
+                    }
+                ] 
+            } 
+        }
+    ] 
+}
+*/

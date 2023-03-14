@@ -1,11 +1,12 @@
-extern crate regex;
+extern crate pest;
+extern crate pest_derive;
 
 use std::fs;
 use std::env;
 use std::process;
 
-mod lexer;
 mod parser;
+mod ast_verification;
 
 fn main() { 
     let path = if let Some(s) = env::args().nth(1) { s } else {
@@ -21,13 +22,6 @@ fn main() {
         }
     };
     
-    match lexer::specific::lex(&input) {
-        Ok(tokens) => {
-            for token in tokens.iter() {
-                println!("{:?}", token);
-            }
-        }
-        Err(e) => eprintln!("{}", e),
-    }
-    
+    let result = parser::parse_nhdl(&input);
+    result.print();
 }

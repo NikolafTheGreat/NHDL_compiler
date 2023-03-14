@@ -1,0 +1,284 @@
+WHITESPACE = _{
+    " "|"\t"|"\r"|"\n"
+}
+COMMENT = _{
+    ("/*" ~ (!"*/" ~ ANY)* ~ "*/") |
+    ("//" ~ (!"\n" ~ ANY)* ~ "\n") 
+}
+
+Top = _{
+    SOI ~
+    OuterScope ~
+    EOI
+}
+
+OuterScope = {
+    "top" ~ ":" ~ Identifier ~ ";" ~
+    Definition*
+}
+
+Definition = _{
+    ModuleDeclaration|EnumDeclaration|ConstantDeclaration
+}
+
+Declaration = _{
+    ModuleInstanciation|RegisterInstanciation|WireInstanciation
+}
+
+ModuleInstanciation = {
+    "module" ~ Identifier ~ ":" ~ Identifier ~ GenericInstaciation? ~ ";"
+}
+
+GenericInstaciation = {
+    "<" ~ (Expression ~ ",")* ~ Expression? ~ ">"
+}
+
+RegisterInstanciation = {
+    "reg" ~ Identifier ~ (":" ~ Type)? ~ ";"
+}
+
+WireInstanciation = {
+    "wire" ~ Identifier ~ (":" ~ Type)? ~ ";"
+}
+
+//Statements
+Statement = _{
+    Scope|Connection|If|Switch
+}
+
+Scope = {
+    "{" ~ (Definition|Loop|Declaration|Statement)* ~ "}"
+}
+
+ModuleDeclaration = {
+    "module" ~ Identifier ~ GenericConstant? ~ TypeBundle ~ Statement
+}
+
+GenericConstant = {
+    "<" ~ (Identifier ~ ",")* ~ Identifier? ~ ">"
+}
+
+EnumDeclaration = {
+    "enum" ~ Identifier ~ "{" ~ 
+        (Identifier ~ ",")* ~ Identifier? ~
+    "}"
+}
+
+ConstantDeclaration = {
+    "const" ~ Identifier ~ ":" ~ Expression ~ ";"
+}
+
+Connection = _{
+    StrongConnection | WeakConnection
+}
+
+StrongConnection = {
+    Target ~ "<=" ~ Expression ~ ";"
+}
+
+WeakConnection = {
+    Target ~ "<-" ~ Expression ~ ";"
+}
+
+If = {
+    "if" ~ "(" ~ Expression ~ ")" ~ Statement ~ ("else" ~ Statement)?
+}
+
+Switch = {
+    SwitchNumber | SwitchEnum
+}
+
+SwitchNumber = _{
+    "switch" ~ "(" ~ Expression ~ ")" ~ "{" ~
+    (Number ~ ":" ~ Statement ~ ",")* ~
+    (
+        (Number ~ ":" ~ Statement)|
+        (Empty ~ ":" ~ Statement)|
+        (Empty ~ ":" ~ Statement ~ ",")
+    )? ~
+
+    "}"
+}
+
+SwitchEnum = _{
+    "switch" ~ "(" ~ Expression ~ ")" ~ "{" ~
+    (Identifier ~ ":" ~ Statement ~ ",")* ~
+    (
+        (Identifier ~ ":" ~ Statement)|
+        (Empty ~ ":" ~ Statement)|
+        (Empty ~ ":" ~ Statement ~ ",")
+    )? ~
+
+    "}"
+}
+
+Empty = {
+    "_"
+}
+
+Loop = {
+    "loop"~ "(" ~ Identifier ~ ":" ~ Expression ~ ".." ~ Expression ~ ")" ~ Statement 
+}
+
+//Identifiers
+Identifier = @{
+    (LETTER|"_") ~ (LETTER|NUMBER|"_")*
+}
+
+Target = {
+    Identifier ~ ("[" ~ Expression ~ "]")? ~ ("." ~ Identifier ~ ("[" ~ Expression ~ "]")?)*
+}
+
+Number = _{
+    HexNumber |
+    OctNumber |
+    BinNumber |
+    DecNumber
+}
+
+HexNumber = @{
+    ("0x" ~ ASCII_HEX_DIGIT+)
+}
+
+OctNumber = @{
+    ("0o" ~ ASCII_OCT_DIGIT+)
+}
+
+BinNumber = @{
+    ("0b" ~ ASCII_BIN_DIGIT+)
+}
+
+DecNumber = @{
+    (ASCII_DIGIT+)
+}
+
+//Types
+Type = _{
+    Vector |
+    Signed |
+    Unsigned |
+    Clock|
+    Reset|
+    TypeBundle|
+    Identifier
+}
+
+Vector = {
+    "[" ~ Type ~ ":" ~ Number ~ "]"
+}
+
+Unsigned = ${
+    "u<" ~ Number ~ ">"
+}
+
+Signed = ${
+    "s<" ~ Number ~ ">"
+}
+
+Clock = {
+    "clock"
+}
+
+Reset = _{
+    SyncReset | AsyncReset
+}
+SyncReset = {
+    "reset"
+}
+AsyncReset = {
+    "async_reset"
+}
+
+TypeBundle = {
+    "(" ~ (Flip? ~ Identifier ~ ":" ~ Type ~ ",")* ~ (Flip? ~ Identifier ~ ":" ~ Type)? ~ ")"
+}
+
+Flip = {
+    "flip"
+}
+
+//Expressions
+Expression = {
+    Comparison
+}
+
+Comparison = {
+    Concatination ~ (ComparisonOperation ~ Concatination)*
+}
+ComparisonOperation = {
+    "<"|">"|"<=" |">="|"=="|"!="
+}
+
+Concatination = {
+    Logical ~ (ConcatinationOperation ~ Logical)*
+}
+ConcatinationOperation = {
+    "|"
+}
+
+Logical = {
+    Shift ~ (LogicalOperation ~ Shift)*
+}
+LogicalOperation = {
+    "and"|"or"|"xor"
+}
+
+Shift = {
+    Sum ~ (ShiftOperation ~ Sum)*
+}
+ShiftOperation = {
+    "<<"|">>"
+}
+
+Sum = {
+    Term ~ (SumOperation ~ Term)*
+}
+SumOperation = {
+    "+"|"-"
+}
+
+Term = {
+    Unary ~ (TermOperation ~ Unary)*
+}
+TermOperation = {
+    "*"|"/"|"%"
+}
+
+Unary = {
+    UnaryOperation* ~ Atom
+}
+UnaryOperation = {
+    "!"|"-"
+}
+
+Atom = _{
+    "(" ~ Expression ~ ")"|
+    Function|
+    Number|
+    Target|
+    ExpressionBundle
+}
+
+ExpressionBundle = {
+    "(" ~ (Flip? ~ Identifier ~ ":" ~ Expression ~ ",")* ~ (Flip? ~ Identifier ~ ":" ~ Expression)? ~ ")"
+}
+
+Function = {
+    (BuiltInFunction|Identifier) ~ "(" ~ (Expression ~ ",")* ~ Expression? ~ ")"
+}
+
+BuiltInFunction = {
+    "add"|"sub"|
+    "mul"|"div"|"rem"|
+    "lt"|"gt"|"leq"|"geq"|"eq"|"neq"|
+    "pad"|
+    "asUnsigned"|"asSigned"|"asClock"|"asReset"|"asAsyncReset"|
+    "shl"|"shr"|
+    "asSignedArithmatic"|
+    "neg"|
+    "not"|"and"|"or"|"xor"|
+    "reduce_and"|"reduce_or"|"reduce_xor"|
+    "cat"|"bits"|
+    "head"|"tail"|
+    "mux"
+}

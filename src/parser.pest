@@ -60,7 +60,7 @@ GenericConstant = {
 
 EnumDeclaration = {
     "enum" ~ Identifier ~ "{" ~ 
-        (Identifier ~ ",")* ~ Identifier? ~
+        (Identifier ~ "::" ~ ",")* ~ Identifier? ~
     "}"
 }
 
@@ -102,9 +102,9 @@ SwitchNumber = _{
 
 SwitchEnum = _{
     "switch" ~ "(" ~ Expression ~ ")" ~ "{" ~
-    (Identifier ~ ":" ~ Statement ~ ",")* ~
+    (EnumVariant ~ ":" ~ Statement ~ ",")* ~
     (
-        (Identifier ~ ":" ~ Statement)|
+        (EnumVariant ~ ":" ~ Statement)|
         (Empty ~ ":" ~ Statement)|
         (Empty ~ ":" ~ Statement ~ ",")
     )? ~
@@ -137,19 +137,23 @@ Number = _{
 }
 
 HexNumber = @{
-    ("0x" ~ ASCII_HEX_DIGIT+)
+    "0x" ~ ASCII_HEX_DIGIT+
 }
 
 OctNumber = @{
-    ("0o" ~ ASCII_OCT_DIGIT+)
+    "0o" ~ ASCII_OCT_DIGIT+
 }
 
 BinNumber = @{
-    ("0b" ~ ASCII_BIN_DIGIT+)
+    "0b" ~ ASCII_BIN_DIGIT+
 }
 
 DecNumber = @{
-    (ASCII_DIGIT+)
+    ASCII_DIGIT+
+}
+
+EnumVariant = ${
+    Identifier ~ "::" ~ Identifier
 }
 
 //Types
@@ -157,9 +161,9 @@ Type = _{
     Vector |
     Signed |
     Unsigned |
-    Clock|
-    Reset|
-    TypeBundle|
+    Clock |
+    Reset |
+    TypeBundle |
     Identifier
 }
 
@@ -255,6 +259,7 @@ Atom = _{
     "(" ~ Expression ~ ")"|
     Function|
     Number|
+    EnumVariant|
     Target|
     ExpressionBundle
 }

@@ -1,12 +1,13 @@
 extern crate pest;
 extern crate pest_derive;
+extern crate num;
 
 use std::fs;
 use std::env;
 use std::process;
 
 mod parser;
-mod ast_verification;
+mod ast_transformation;
 
 fn main() { 
     let path = if let Some(s) = env::args().nth(1) { s } else {

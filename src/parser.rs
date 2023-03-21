@@ -1,11 +1,13 @@
 use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
+use num::Num;
+use num::BigUint;
 
 #[derive(Parser)]
 #[grammar = "parser.pest"]
 struct NHDLParser;
 
-impl <'a> ASTNode <'a> {
+impl <'a> AST <'a> {
     pub fn print(&self) {
         let mut input = format!("{:?}", self);
         input = input.replace(", ", ",\n");
@@ -39,33 +41,35 @@ impl <'a> ASTNode <'a> {
     }
 }
 
-#[derive(Debug)]
-pub enum ASTNode <'a> {
-    OuterScope {
-        top_module : &'a str,
-        internals: Vec<ASTNode<'a>>
-    },
+#[derive(Debug,PartialEq)]
+pub struct AST <'a> {
+    top_module : &'a str,
+    internals: Vec<ASTStatement<'a>>
+}
+
+#[derive(Debug,PartialEq)]
+pub enum ASTStatement <'a> {
     ModuleInstance {
         instance_name : &'a str,
         type_name : &'a str,
-        generic_values : Vec<ASTNode<'a>>
+        generic_values : Vec<ASTExpression<'a>>
     },
     RegisterInstance {
         instance_name : &'a str,
-        type_ : Box<ASTNode<'a>>
+        type_ : Box<ASTType<'a>>
     },
     WireInstance {
         instance_name : &'a str,
-        type_ : Box<ASTNode<'a>>
+        type_ : Box<ASTType<'a>>
     },
     Scope {
-        internals: Vec<ASTNode<'a>>
+        internals: Vec<ASTStatement<'a>>
     },
     ModuleDeclaration {
         module_name : &'a str,
         generic_names : Vec<&'a str>,
-        io : Box<ASTNode<'a>>,
-        body : Box<ASTNode<'a>>
+        io : Box<ASTType<'a>>,
+        body : Box<ASTStatement<'a>>
     },
     EnumDeclaration {
         enum_name : &'a str,
@@ -73,63 +77,79 @@ pub enum ASTNode <'a> {
     },
     ConstantDeclaration {
         constant_name : &'a str,
-        value : Box<ASTNode<'a>>
+        value : Box<ASTExpression<'a>>
     },
     StrongConnection {
-        lhs : Box<ASTNode<'a>>,
-        rhs : Box<ASTNode<'a>>
+        lhs : Box<ASTAtom<'a>>,
+        rhs : Box<ASTExpression<'a>>
     },
     WeakConnection {
-        lhs : Box<ASTNode<'a>>,
-        rhs : Box<ASTNode<'a>>
+        lhs : Box<ASTAtom<'a>>,
+        rhs : Box<ASTExpression<'a>>
     },
     If {
-        condition : Box<ASTNode<'a>>,
-        true_body : Box<ASTNode<'a>>,
-        false_body : Option<Box<ASTNode<'a>>>,
+        condition : Box<ASTExpression<'a>>,
+        true_body : Box<ASTStatement<'a>>,
+        false_body : Option<Box<ASTStatement<'a>>>,
     },
     Switch {
-        condition : Box<ASTNode<'a>>,
-        paths : Vec<(Box<ASTNode<'a>>, Box<ASTNode<'a>>)>
+        condition : Box<ASTExpression<'a>>,
+        paths : Vec<(Box<ASTAtom<'a>>, Box<ASTStatement<'a>>)>
     },
-    Empty,
     Loop {
         variable_name : &'a str,
-        from : Box<ASTNode<'a>>,
-        to : Box<ASTNode<'a>>,
-        body : Box<ASTNode<'a>>
+        from : Box<ASTExpression<'a>>,
+        to : Box<ASTExpression<'a>>,
+        body : Box<ASTStatement<'a>>
     },
+}
+
+#[derive(Debug,PartialEq)]
+pub enum ASTAtom <'a> {
+    Empty,
     Identifier(&'a str),
-    Target(Vec<(Box<ASTNode<'a>>, Option<Box<ASTNode<'a>>>)>),
-    Number(usize),
-    VectorType {
-        type_ : Box<ASTNode<'a>>,
-        size : Box<ASTNode<'a>>
+    Target(Vec<(Box<ASTAtom<'a>>, Option<Box<ASTExpression<'a>>>)>),
+    Enum {
+        kind : &'a str,
+        variant : &'a str,
     },
-    UnsignedType (Box<ASTNode<'a>>),
-    SignedType (Box<ASTNode<'a>>),
-    ClockType,
-    AsyncResetType,
-    SyncResetType,
-    TypeBundle (Vec<(bool, &'a str, Box<ASTNode<'a>>)>),
+    Number(BigUint),
+}
+
+#[derive(Debug,PartialEq)]
+pub enum ASTType <'a> {
+    Vector {
+        type_ : Box<ASTType<'a>>,
+        size : Box<ASTExpression<'a>>
+    },
+    Unsigned (Box<ASTExpression<'a>>),
+    Signed (Box<ASTExpression<'a>>),
+    Clock,
+    AsyncReset,
+    SyncReset,
+    Bundle (Vec<(bool, &'a str, Box<ASTType<'a>>)>),
+}
+
+#[derive(Debug,PartialEq)]
+pub enum ASTExpression <'a> {
     BinaryOperation {
-        lhs : Box<ASTNode<'a>>,
+        lhs : Box<ASTExpression<'a>>,
         operation : BinaryOperation,
-        rhs : Box<ASTNode<'a>>
+        rhs : Box<ASTExpression<'a>>
     },
     UnaryOperation {
         operation : UnaryOperation,
-        content : Box<ASTNode<'a>>
+        content : Box<ASTExpression<'a>>
     },
-    ExpressionBundle (Vec<(bool, &'a str, Box<ASTNode<'a>>)>),
+    ExpressionBundle (Vec<(bool, &'a str, Box<ASTExpression<'a>>)>),
     Function {
         function : Function<'a>,
-        content : Vec<ASTNode<'a>>
+        content : Vec<ASTExpression<'a>>
     },
-    //Unfinnished(&'a str),
+    Atom (Box<ASTAtom<'a>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum BinaryOperation {
     GreaterThan,
     LessThan,
@@ -155,14 +175,14 @@ pub enum BinaryOperation {
     Remainder,
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum UnaryOperation {
     Negate,
     Not,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Function <'a> {
     add,
     sub,
@@ -213,70 +233,51 @@ pub enum Function <'a> {
     Custom(&'a str)
 }
 
-pub fn parse_nhdl(input : &str) -> ASTNode{
+pub fn parse_nhdl(input : &str) -> AST{
     let tree = match NHDLParser::parse(Rule::Top, input) {
         Ok(mut p) => p.next().unwrap(),
         Err(e) => panic!("{}", e),
     };
-    fn parse(tree : Pair<Rule>) -> ASTNode {
+
+    fn parse(tree : Pair<Rule>) -> AST {
         match tree.as_rule() {
-            Rule::WHITESPACE |
-            Rule::COMMENT |
-            Rule::EOI |
-            Rule::Top |
-            Rule::Definition |
-            Rule::Declaration |
-            Rule::Statement |
-            Rule::Connection |
-            Rule::SwitchNumber |
-            Rule::SwitchEnum |
-            Rule::Number |
-            Rule::Type |
-            Rule::Reset |
-            Rule::Atom |
-            Rule::GenericInstaciation |
-            Rule::GenericConstant |
-            Rule::Flip |
-            Rule::ComparisonOperation |
-            Rule::ConcatinationOperation |
-            Rule::LogicalOperation |
-            Rule::ShiftOperation |
-            Rule::SumOperation |
-            Rule::TermOperation |
-            Rule::UnaryOperation |
-            Rule::BuiltInFunction 
-            => unreachable!(),
             Rule::OuterScope => {
                 let mut inner = tree.into_inner();
-                ASTNode::OuterScope {
+                AST {
                     top_module: inner.next().unwrap().as_str(),
-                    internals: inner.map(parse).collect(),
+                    internals: inner.map(parse_statement).collect(),
                 }
-            }
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_statement(tree : Pair<Rule>) -> ASTStatement {
+        match tree.as_rule() {
             Rule::ModuleInstanciation => {
                 let mut inner = tree.into_inner();
-                ASTNode::ModuleInstance {
+                ASTStatement::ModuleInstance {
                     instance_name: inner.next().unwrap().as_str(),
                     type_name: inner.next().unwrap().as_str(), 
-                    generic_values: inner.next().unwrap().into_inner().map(parse).collect()
+                    generic_values: inner.next().unwrap().into_inner().map(parse_expression).collect()
                 }
             },
             Rule::RegisterInstanciation => {
                 let mut inner = tree.into_inner();
-                ASTNode::RegisterInstance {
+                ASTStatement::RegisterInstance {
                     instance_name: inner.next().unwrap().as_str(),
-                    type_: Box::new(parse(inner.next().unwrap()))
+                    type_: Box::new(parse_type(inner.next().unwrap()))
                 }
             }
             Rule::WireInstanciation => {
                 let mut inner = tree.into_inner();
-                ASTNode::WireInstance {
+                ASTStatement::WireInstance {
                     instance_name: inner.next().unwrap().as_str(),
-                    type_: Box::new(parse(inner.next().unwrap()))
+                    type_: Box::new(parse_type(inner.next().unwrap()))
                 }
             }
-            Rule::Scope => ASTNode::Scope {
-                internals: tree.into_inner().map(parse).collect(),
+            Rule::Scope => ASTStatement::Scope {
+                internals: tree.into_inner().map(parse_statement).collect(),
             },
             Rule::ModuleDeclaration => {
                 let mut inner = tree.into_inner();
@@ -291,112 +292,133 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
                     next = inner.next().unwrap();
                 }
 
-                ASTNode::ModuleDeclaration {
+                ASTStatement::ModuleDeclaration {
                     module_name: module_name,
                     generic_names: generic_names,
-                    io: Box::new(parse(next)),
-                    body: Box::new(parse(inner.next().unwrap()))
+                    io: Box::new(parse_type(next)),
+                    body: Box::new(parse_statement(inner.next().unwrap()))
                 }
             },
             Rule::EnumDeclaration => {
                 let mut inner = tree.into_inner();
-                ASTNode::EnumDeclaration {
+                ASTStatement::EnumDeclaration {
                     enum_name: inner.next().unwrap().as_str(),
                     variant_names: inner.map(|n|n.as_str()).collect()
                 }
             },
             Rule::ConstantDeclaration => {
                 let mut inner = tree.into_inner();
-                ASTNode::ConstantDeclaration {
+                ASTStatement::ConstantDeclaration {
                     constant_name: inner.next().unwrap().as_str(),
-                    value: Box::new(parse(inner.next().unwrap()))
+                    value: Box::new(parse_expression(inner.next().unwrap()))
                 }
             },
             Rule::StrongConnection => {
                 let mut inner = tree.into_inner();
-                ASTNode::StrongConnection {
-                    lhs: Box::new(parse(inner.next().unwrap())),
-                    rhs: Box::new(parse(inner.next().unwrap()))
+                ASTStatement::StrongConnection {
+                    lhs: Box::new(parse_atom(inner.next().unwrap())),
+                    rhs: Box::new(parse_expression(inner.next().unwrap()))
                 }
             },
             Rule::WeakConnection => {
                 let mut inner = tree.into_inner();
-                ASTNode::WeakConnection {
-                    lhs: Box::new(parse(inner.next().unwrap())),
-                    rhs: Box::new(parse(inner.next().unwrap()))
+                ASTStatement::WeakConnection {
+                    lhs: Box::new(parse_atom(inner.next().unwrap())),
+                    rhs: Box::new(parse_expression(inner.next().unwrap()))
                 }
             },
             Rule::If => {
                 let mut inner = tree.into_inner();
-                ASTNode::If {
-                    condition: Box::new(parse(inner.next().unwrap())),
-                    true_body: Box::new(parse(inner.next().unwrap())),
-                    false_body: inner.next().map(|n|Box::new(parse(n)))
+                ASTStatement::If {
+                    condition: Box::new(parse_expression(inner.next().unwrap())),
+                    true_body: Box::new(parse_statement(inner.next().unwrap())),
+                    false_body: inner.next().map(|n|Box::new(parse_statement(n)))
                 }
             },
             Rule::Switch => {
                 let mut inner = tree.into_inner();
-                let condition = Box::new(parse(inner.next().unwrap()));
+                let condition = Box::new(parse_expression(inner.next().unwrap()));
                 let mut paths = vec![];
 
                 while let Some(n) = inner.next() {
                     paths.push((
-                        Box::new(parse(n)),
-                        Box::new(parse(inner.next().unwrap()))
+                        Box::new(parse_atom(n)),
+                        Box::new(parse_statement(inner.next().unwrap()))
                     ));
                 }
 
-                ASTNode::Switch {
+                ASTStatement::Switch {
                     condition: condition,
                     paths: paths
                 }
             },
-            Rule::Empty => ASTNode::Empty,
             Rule::Loop => {
                 let mut inner = tree.into_inner();
-                ASTNode::Loop {
+                ASTStatement::Loop {
                     variable_name: inner.next().unwrap().as_str(),
-                    from: Box::new(parse(inner.next().unwrap())),
-                    to: Box::new(parse(inner.next().unwrap())),
-                    body: Box::new(parse(inner.next().unwrap()))
+                    from: Box::new(parse_expression(inner.next().unwrap())),
+                    to: Box::new(parse_expression(inner.next().unwrap())),
+                    body: Box::new(parse_statement(inner.next().unwrap()))
                 }
             },
-            Rule::Identifier => ASTNode::Identifier(tree.as_str()),
+            _ => unreachable!(),
+
+        }
+    }
+
+    fn parse_atom(tree : Pair<Rule>) -> ASTAtom {
+        match tree.as_rule() {
+            Rule::Empty => ASTAtom::Empty,
+            Rule::Identifier => ASTAtom::Identifier(tree.as_str()),
             Rule::Target => {
                 let mut inner = tree.into_inner();
 
                 let mut output = vec![];
                 while let Some(n) = inner.next() {
                     output.push((
-                        Box::new(parse(n)),
+                        Box::new(parse_atom(n)),
                         if let Some(Rule::Expression) = inner.peek().map(|n|n.as_rule()) {
-                            Some(Box::new(parse(inner.next().unwrap())))
+                            Some(Box::new(parse_expression(inner.next().unwrap())))
                         } else {None}
                     ))
                 }
 
-                ASTNode::Target(output)
+                ASTAtom::Target(output)
             }
-            Rule::HexNumber => ASTNode::Number(usize::from_str_radix(&tree.as_str()[2..], 16).unwrap()),
-            Rule::OctNumber => ASTNode::Number(usize::from_str_radix(&tree.as_str()[2..], 8).unwrap()),
-            Rule::BinNumber => ASTNode::Number(usize::from_str_radix(&tree.as_str()[2..], 2).unwrap()),
-            Rule::DecNumber => {ASTNode::Number(tree.as_str().parse().unwrap())},
+            Rule::EnumVariant => {
+                let mut inner = tree.into_inner();
+                ASTAtom::Enum {
+                    kind: inner.next().unwrap().as_str(),
+                    variant: inner.next().unwrap().as_str()
+                }
+            },
+            Rule::HexNumber => ASTAtom::Number(BigUint::from_str_radix(&tree.as_str()[2..], 16).unwrap()),
+            Rule::OctNumber => ASTAtom::Number(BigUint::from_str_radix(&tree.as_str()[2..], 8).unwrap()),
+            Rule::BinNumber => ASTAtom::Number(BigUint::from_str_radix(&tree.as_str()[2..], 2).unwrap()),
+            Rule::DecNumber => {ASTAtom::Number(tree.as_str().parse().unwrap())},
+            _ => unreachable!(),
+
+        }
+    }
+
+    fn parse_type(tree : Pair<Rule>) -> ASTType {
+        match tree.as_rule() {
             Rule::Vector => {
                 let mut inner = tree.into_inner();
-                ASTNode::VectorType {
-                    type_: Box::new(parse(inner.next().unwrap())),
-                    size: Box::new(parse(inner.next().unwrap()))
+                ASTType::Vector {
+                    type_: Box::new(parse_type(inner.next().unwrap())),
+                    size: Box::new(parse_expression(inner.next().unwrap()))
                 }
             }
-            Rule::Unsigned => ASTNode::UnsignedType(
-                Box::new(parse(tree.into_inner().next().unwrap()))
+            Rule::Unsigned => ASTType::Unsigned(
+                Box::new(parse_expression(tree.into_inner().next().unwrap()))
             ),
-            Rule::Signed => ASTNode::SignedType(
-                Box::new(parse(tree.into_inner().next().unwrap()))
+            Rule::Signed => ASTType::Signed(
+                Box::new(parse_expression(tree.into_inner().next().unwrap()))
             ),
-            Rule::Clock => ASTNode::ClockType,
-            Rule::SyncReset => ASTNode::SyncResetType,
-            Rule::AsyncReset => ASTNode::AsyncResetType,
+            Rule::Clock => ASTType::Clock,
+            Rule::SyncReset => ASTType::SyncReset,
+            Rule::AsyncReset => ASTType::AsyncReset,
             Rule::TypeBundle => {
                 let mut inner = tree.into_inner();
                 
@@ -410,14 +432,26 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
                     output.push((
                         flipped,
                         n.as_str(),
-                        Box::new(parse(inner.next().unwrap()))
+                        Box::new(parse_type(inner.next().unwrap()))
                     ))
                 }
 
-                ASTNode::TypeBundle(output)
+                ASTType::Bundle(output)
             },
-            Rule::Expression => {
-                parse(tree.into_inner().next().unwrap())
+            _ => unreachable!(),
+
+        }
+    }
+
+    fn parse_expression(tree : Pair<Rule>) -> ASTExpression {
+        match tree.as_rule() {
+            Rule::Expression => parse_expression(tree.into_inner().next().unwrap()),
+            Rule::HexNumber |
+            Rule::OctNumber |
+            Rule::DecNumber |
+            Rule::Target |
+            Rule::EnumVariant => {
+                ASTExpression::Atom(Box::new(parse_atom(tree)))
             }
             Rule::Comparison |
             Rule::Concatination |
@@ -426,9 +460,9 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
             Rule::Sum |
             Rule::Term => {
                 let mut inner = tree.into_inner();
-                let mut output = parse(inner.next().unwrap());
+                let mut output = parse_expression(inner.next().unwrap());
                 while let Some(n) = inner.next() {
-                    output = ASTNode::BinaryOperation {
+                    output = ASTExpression::BinaryOperation {
                         lhs: Box::new(output),
                         operation: match n.as_str() {
                             "<" => BinaryOperation::GreaterThan,
@@ -455,16 +489,16 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
                             "%" => BinaryOperation::Remainder,
                             _ => unreachable!()
                         },
-                        rhs: Box::new(parse(inner.next().unwrap()))
+                        rhs: Box::new(parse_expression(inner.next().unwrap()))
                     }
                 }
                 output
             },
             Rule::Unary => {
                 let mut inner = tree.into_inner().rev();
-                let mut output = parse(inner.next().unwrap());
+                let mut output = parse_expression(inner.next().unwrap());
                 while let Some(o) = inner.next() {
-                    output = ASTNode::UnaryOperation {
+                    output = ASTExpression::UnaryOperation {
                         operation: match o.as_str() {
                             "-" => UnaryOperation::Negate,
                             "!" => UnaryOperation::Not,
@@ -488,11 +522,11 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
                     output.push((
                         flipped,
                         n.as_str(),
-                        Box::new(parse(inner.next().unwrap()))
+                        Box::new(parse_expression(inner.next().unwrap()))
                     ))
                 }
 
-                ASTNode::ExpressionBundle(output)
+                ASTExpression::ExpressionBundle(output)
             },
             Rule::Function => {
                 let mut inner = tree.into_inner();
@@ -551,12 +585,13 @@ pub fn parse_nhdl(input : &str) -> ASTNode{
                     Rule::Identifier => Function::Custom(first.as_str()),
                     _ => unreachable!(),
                 };
-                ASTNode::Function {
+                ASTExpression::Function {
                     function: function,
-                    content: inner.map(parse).collect()
+                    content: inner.map(parse_expression).collect()
                 }
             },
-            //_ => ASTNode::Unfinnished(tree.as_str())
+            _ => unreachable!(),
+
         }
     }
 

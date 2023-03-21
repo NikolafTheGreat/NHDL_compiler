@@ -11,6 +11,7 @@ module MyModule (input : (a : u<32>, b : s<3>,), flip output : s<3>) {
     if (2+1 > 2) {
         n <- 2;
     } else if (i < 3) {
+        n <= enum1::variant;
     }
 
     loop (i : 2..3+2) {

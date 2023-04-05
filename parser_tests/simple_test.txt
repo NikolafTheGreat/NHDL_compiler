@@ -1,0 +1,172 @@
+top : MyModule;
+
+module MyModule (input : (a : u[u32], b : s[u3],), flip output : [s[u3] : u2]) {
+    n <= uxabc+u2+u1*u3;
+    if (u2+u1 > u2) {
+        n <- s2;
+    } else if (i < u3) {
+        n <= s3;
+    }
+}
+
+/*
+AST {
+    top_module: UnEvaluated("MyModule"),
+    internals: [
+        ModuleDeclaration {
+            module_name: Evaluated(0),
+            generic_names: _,
+            io: Bundle([
+                (false,
+                Evaluated(1),
+                Bundle([
+                    (false,
+                    Evaluated(2),
+                    Unsigned(Atom(Number {
+                        signed: false,
+                        value: DecNumber("32"),
+                        width: None 
+                    }))),
+                    (false,
+                    Evaluated(3),
+                    Signed(Atom(Number {
+                        signed: false,
+                        value: DecNumber("3"),
+                        width: None 
+                    })))
+                ])),
+                (true,
+                Evaluated(4),
+                Vector {
+                    type_: Signed(Atom(Number {
+                        signed: false,
+                        value: DecNumber("3"),
+                        width: None 
+                    })),
+                    size: Atom(Number {
+                        signed: false,
+                        value: DecNumber("2"),
+                        width: None 
+                    }) 
+                })
+            ]),
+            body: Scope {
+                internals: [
+                    StrongConnection {
+                        lhs: Target([
+                            (Evaluated(5),
+                            None)
+                        ]),
+                        rhs: BinaryOperation {
+                            lhs: BinaryOperation {
+                                lhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("3"),
+                                    width: None 
+                                }),
+                                operation: Plus,
+                                rhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("2"),
+                                    width: None 
+                                }) 
+                            },
+                            operation: Plus,
+                            rhs: BinaryOperation {
+                                lhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("1"),
+                                    width: None 
+                                }),
+                                operation: Multiply,
+                                rhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("3"),
+                                    width: None 
+                                }) 
+                            } 
+                        } 
+                    },
+                    If {
+                        condition: BinaryOperation {
+                            lhs: BinaryOperation {
+                                lhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("2"),
+                                    width: None 
+                                }),
+                                operation: Plus,
+                                rhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("1"),
+                                    width: None 
+                                }) 
+                            },
+                            operation: LessThan,
+                            rhs: Atom(Number {
+                                signed: false,
+                                value: DecNumber("2"),
+                                width: None 
+                            }) 
+                        },
+                        true_body: Scope {
+                            internals: [
+                                WeakConnection {
+                                    lhs: Target([
+                                        (Evaluated(5),
+                                        None)
+                                    ]),
+                                    rhs: Atom(Number {
+                                        signed: true,
+                                        value: DecNumber("2"),
+                                        width: None 
+                                    }) 
+                                }
+                            ] 
+                        },
+                        false_body: Some(If {
+                            condition: BinaryOperation {
+                                lhs: Atom(Target([
+                                    (Evaluated(6),
+                                    None)
+                                ])),
+                                operation: GreaterThan,
+                                rhs: Atom(Number {
+                                    signed: false,
+                                    value: DecNumber("3"),
+                                    width: None 
+                                }) 
+                            },
+                            true_body: Scope {
+                                internals: [
+                                    StrongConnection {
+                                        lhs: Target([
+                                            (Evaluated(5),
+                                            None)
+                                        ]),
+                                        rhs: Atom(Number {
+                                            signed: true,
+                                            value: DecNumber("3"),
+                                            width: None 
+                                        }) 
+                                    }
+                                ] 
+                            },
+                            false_body: None 
+                        }) 
+                    }
+                ] 
+            } 
+        }
+    ],
+    identifier_list: [
+        "MyModule",
+        "input",
+        "a",
+        "b",
+        "output",
+        "n",
+        "i"
+    ] 
+}
+*/

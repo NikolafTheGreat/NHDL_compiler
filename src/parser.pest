@@ -22,23 +22,19 @@ Definition = _{
 }
 
 Declaration = _{
-    ModuleInstanciation|RegisterInstanciation|WireInstanciation
-}
-
-ModuleInstanciation = {
-    "module" ~ Identifier ~ ":" ~ Identifier ~ GenericInstaciation? ~ ";"
-}
-
-GenericInstaciation = {
-    "<" ~ (Expression ~ ",")* ~ Expression? ~ ">"
+    RegisterInstanciation|WireInstanciation
 }
 
 RegisterInstanciation = {
-    "reg" ~ Identifier ~ (":" ~ Type)? ~ ";"
+    "reg" ~ Identifier ~
+    "{" ~ "clock" ~ ":" ~ Expression ~
+    "," ~ "reset" ~ ":" ~ Expression ~ 
+    "," ~ "initial" ~ ":" ~ Expression ~ ","? ~
+    "}" ~ ":" ~ Type ~ ";"
 }
 
 WireInstanciation = {
-    "wire" ~ Identifier ~ (":" ~ Type)? ~ ";"
+    "wire" ~ Identifier ~ ":" ~ Type ~ ";"
 }
 
 //Statements
@@ -65,7 +61,7 @@ EnumDeclaration = {
 }
 
 ConstantDeclaration = {
-    "const" ~ Identifier ~ ":" ~ Expression ~ ";"
+    "const" ~ Identifier ~ ":" ~ Type ~ "=" ~ Expression ~ ";"
 }
 
 Connection = _{
@@ -129,23 +125,20 @@ Target = {
     Identifier ~ ("[" ~ Expression ~ "]")? ~ ("." ~ Identifier ~ ("[" ~ Expression ~ "]")?)*
 }
 
-Number = _{
-    HexNumber |
-    OctNumber |
-    BinNumber |
-    DecNumber
+Number = ${
+    ("s"|"u") ~ (HexNumber | OctNumber | BinNumber | DecNumber) ~ ("[" ~ Expression ~ "]")?
 }
 
 HexNumber = @{
-    "0x" ~ ASCII_HEX_DIGIT+
+    "x" ~ "-"? ~ ASCII_HEX_DIGIT+
 }
 
 OctNumber = @{
-    "0o" ~ ASCII_OCT_DIGIT+
+    "o" ~ "-"? ~ ASCII_OCT_DIGIT+
 }
 
 BinNumber = @{
-    "0b" ~ ASCII_BIN_DIGIT+
+    "b" ~ "-"? ~ ASCII_BIN_DIGIT+
 }
 
 DecNumber = @{
@@ -164,7 +157,7 @@ Type = _{
     Clock |
     Reset |
     TypeBundle |
-    Identifier
+    Custom
 }
 
 Vector = {
@@ -172,11 +165,11 @@ Vector = {
 }
 
 Unsigned = ${
-    "u<" ~ Number ~ ">"
+    "u[" ~ Expression ~ "]"
 }
 
 Signed = ${
-    "s<" ~ Number ~ ">"
+    "s[" ~ Expression ~ "]"
 }
 
 Clock = {
@@ -199,6 +192,10 @@ TypeBundle = {
 
 Flip = {
     "flip"
+}
+
+Custom = {
+    Identifier ~ ("<" ~ Target+ ~ ">")
 }
 
 //Expressions
@@ -269,7 +266,7 @@ ExpressionBundle = {
 }
 
 Function = {
-    (BuiltInFunction|Identifier) ~ "(" ~ (Expression ~ ",")* ~ Expression? ~ ")"
+    (BuiltInFunction) ~ "(" ~ (Expression ~ ",")* ~ Expression? ~ ")"
 }
 
 BuiltInFunction = {
@@ -278,7 +275,7 @@ BuiltInFunction = {
     "lt"|"gt"|"leq"|"geq"|"eq"|"neq"|
     "pad"|
     "asUnsigned"|"asSigned"|"asClock"|"asReset"|"asAsyncReset"|
-    "shl"|"shr"|
+    "shl"|"shr"|"dshl"|"dshr"|
     "asSignedArithmatic"|
     "neg"|
     "not"|"and"|"or"|"xor"|

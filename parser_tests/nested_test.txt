@@ -1,9 +1,9 @@
 top : MyModule;
 
-const const1 : 2;
+const const1  : u[32] = 2;
 
-module MyModule (input : (a : u<32>, b : s<3>,), flip output : s<3>) {
-    const const2 : 3;
+module MyModule (input : (a : u[32], b : s[3],), flip output : [s[3] : 2]) {
+    const const2 : u[32] = 3;
     enum enum1 {
         variant
     }

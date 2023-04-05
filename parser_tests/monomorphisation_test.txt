@@ -1,0 +1,18 @@
+top : myModule;
+
+module myModule () {
+    wire reg1 : nReg<2>;
+    wire reg2 : nReg<6>;
+}
+
+module nReg <n> (
+    input : u[n], flip output : u[n],
+    clk : clock, res : reset,
+    ) {
+    reg mem {
+        clock : clk,
+        reset : res,  
+    } : u[n];
+    reg <= input;
+    output <= reg;
+}

@@ -1,0 +1,35 @@
+top : ALU;
+
+enum operation {
+    add,
+    sub,
+    mul,
+    div,
+}
+
+const width : u[8] = 18;
+
+module ALU (
+    in sel : operation,
+    in a : s[width],
+    in b : s[width],
+    out o : s[width]
+) {
+    switch (sel) {
+        operation::add : {
+            o <- a + b;
+        },
+        operation::sub : {
+            o <- a - b;
+        },
+        operation::mul : {
+            o <- a * b;
+        },
+        operation::div : {
+            o <- a / b;
+        },
+        _ : {
+            o <- 0;
+        }
+    }
+}

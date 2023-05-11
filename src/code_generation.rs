@@ -7,7 +7,7 @@ use thiserror::Error;
 pub enum CodeGenerationError {
     #[error("Non simple element encountered")]
     NonSimpleElement,
-    #[error("Wrong number of arguments to functio¨")]
+    #[error("Wrong number of arguments to function")]
     WrongNumberOfArguments,
 }
 
@@ -41,11 +41,15 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                 generate_type(type_, identifier_list, output)?;
                 output.push_str(", ");
                 generate_expression(&clock, identifier_list, output)?;
-                output.push_str(" with: (reset => (");
-                generate_expression(reset, identifier_list, output)?;
-                output.push_str(", ");
-                generate_expression(initial, identifier_list, output)?;
-                output.push_str("))");
+                if let Some(reset) = reset {
+                    output.push_str(" with: (reset => (");
+                    generate_expression(reset, identifier_list, output)?;
+                    output.push_str(", ");
+                    if let Some(initial) = initial {
+                        generate_expression(initial, identifier_list, output)?;
+                    }
+                    output.push_str("))");
+                }
             },
             ASTStatement::WireInstance {
                 instance_name,
@@ -57,9 +61,29 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                 output.push_str(": ");
                 generate_type(type_, identifier_list, output)?;
             },
+            ASTStatement::ModuleInstance {
+                instance_name,
+                type_,
+                generic_values
+            } => {
+                generate_new_line(indent, output);
+                output.push_str("inst ");
+                output.push_str(instance_name.as_str(identifier_list));
+                output.push_str(" of ");
+                output.push_str(type_.as_str(identifier_list));
+                if generic_values.len() != 0 {
+                    println!("NonSimple1");
+                    return Err(CodeGenerationError::NonSimpleElement);
+                }
+            }
             ASTStatement::Scope {
                 internals
             } => {
+
+                if internals.is_empty() {
+                    generate_new_line(indent, output);
+                    output.push_str("skip");
+                }
                 for statement in internals.iter() {
                     generate_statement(statement, identifier_list, output, indent)?;
                 }
@@ -75,36 +99,25 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                 output.push_str(module_name.as_str(identifier_list));
                 output.push_str(" :");
                 if generic_names.len() != 0 {
+                    println!("NonSimple2");
                     return Err(CodeGenerationError::NonSimpleElement);
                 }
-                let mut io_input = "input in: {".to_string();
-                let mut io_output = "output out: {".to_string();
                 if let ASTType::Bundle(fields) = &**io {
                     for (flip, identifier, type_) in fields.iter() {
+                        generate_new_line(indent + 1, output);
                         if *flip {
-                            io_output.push_str(identifier.as_str(identifier_list));
-                            io_output.push_str(": ");
-                            generate_type(type_, identifier_list, &mut io_output)?;
-                            io_output.push_str(", ");
+                            output.push_str("output ");
                         } else {
-                            io_input.push_str(identifier.as_str(identifier_list));
-                            io_input.push_str(": ");
-                            generate_type(type_, identifier_list, &mut io_input)?;
-                            io_input.push_str(", ");
+                            output.push_str("input ");
                         }
+                        output.push_str(identifier.as_str(identifier_list));
+                        output.push_str(": ");
+                        generate_type(type_, identifier_list, output)?;
                     }
                 } else {
                     unreachable!();
                 }
-                io_input.push_str("}");
-                io_output.push_str("}");
-                io_input = io_input.replace(", }", "}");
-                io_output = io_output.replace(", }", "}");
-                generate_new_line(indent + 1, output);
-                output.push_str(&io_input);
-                generate_new_line(indent + 1, output);
-                output.push_str(&io_output);
-
+                
                 generate_statement(body, identifier_list, output, indent + 1)?;
             },
             ASTStatement::StrongConnection {
@@ -141,8 +154,20 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                     generate_statement(false_body, identifier_list, output, indent + 1)?;
                 }
             },
-            _ => return Err(CodeGenerationError::NonSimpleElement),
-            
+            ASTStatement::Node { 
+                name, 
+                value 
+            } => {
+                generate_new_line(indent, output);
+                output.push_str("node ");
+                output.push_str(name.as_str(identifier_list));
+                output.push_str(" = ");
+                generate_expression(&value, identifier_list, output)?;
+            },
+            _ => {
+                println!("NonSimple3");
+                return Err(CodeGenerationError::NonSimpleElement);
+            },            
         }
         Ok(())
     }
@@ -158,13 +183,17 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                 let (identifier, index) = inner.next().unwrap();
                 output.push_str(identifier.as_str(identifier_list));
                 if let Some(index) = index {
-                    generate_expression(index, identifier_list, output)?;
+                    output.push_str("[");
+                    generate_expression_simple(index, identifier_list, output)?;
+                    output.push_str("]");
                 }
                 for (identifier, index) in inner {
                     output.push_str(".");
                     output.push_str(identifier.as_str(identifier_list));
                     if let Some(index) = index {
-                        generate_expression(index, identifier_list, output)?;
+                        output.push_str("[");
+                        generate_expression_simple(index, identifier_list, output)?;
+                        output.push_str("]");
                     }
                 }
             },
@@ -184,26 +213,13 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                     output.push_str(">");
                 }
                 output.push_str("(");
-                output.push_str(match value {
-                    Number::HexNumber(_) => "\"h",
-                    Number::OctNumber(_) => "\"o",
-                    Number::BinNumber(_) => "\"b",
-                    Number::DecNumber(_) => "",
-                });
-                output.push_str(match value {
-                    Number::HexNumber(num) => num,
-                    Number::OctNumber(num) => num,
-                    Number::BinNumber(num) => num,
-                    Number::DecNumber(num) => num,
-                });
-                output.push_str(match value {
-                    Number::HexNumber(_) => "\")",
-                    Number::OctNumber(_) => "\")",
-                    Number::BinNumber(_) => "\")",
-                    Number::DecNumber(_) => ")",
-                });
+                generate_number(value, output);
+                output.push_str(")");
             },
-            _ => return Err(CodeGenerationError::NonSimpleElement),
+            _ => {
+                println!("NonSimple4");
+                return Err(CodeGenerationError::NonSimpleElement);
+            },
         }
         Ok(())
     }
@@ -220,17 +236,17 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
             } => {
                 generate_type(type_, identifier_list, output)?;
                 output.push_str("[");
-                generate_expression(size, identifier_list, output)?;
+                generate_expression_simple(size, identifier_list, output)?;
                 output.push_str("]");
             },
             ASTType::Unsigned (width) => {
                 output.push_str("UInt<");
-                generate_expression(width, identifier_list, output)?;
+                generate_expression_simple(width, identifier_list, output)?;
                 output.push_str(">");
             },
             ASTType::Signed (width) => {
                 output.push_str("SInt<");
-                generate_expression(width, identifier_list, output)?;
+                generate_expression_simple(width, identifier_list, output)?;
                 output.push_str(">");
             },
             ASTType::Bundle (inner) => {
@@ -252,7 +268,19 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                 }
                 output.push_str("}");
             },
-            _ => return Err(CodeGenerationError::NonSimpleElement)
+            ASTType::Clock => {
+                output.push_str("Clock");
+            }
+            ASTType::SyncReset => {
+                output.push_str("UInt<1>");
+            }
+            ASTType::AsyncReset => {
+                output.push_str("AsyncReset");
+            }
+            _ => {
+                println!("NonSimple5");
+                return Err(CodeGenerationError::NonSimpleElement);
+            }
         }
         Ok(())
     }
@@ -363,7 +391,64 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
                     Function::tail => output.push_str("tail"),
 
                     Function::mux => output.push_str("mux"),
-                    _ => return Err(CodeGenerationError::NonSimpleElement)
+                    _ => {
+                        println!("NonSimple6");
+                        return Err(CodeGenerationError::NonSimpleElement);
+                    }
+                }
+                if arguments.len() != match function {
+                    Function::add => 2,
+                    Function::sub => 2,
+
+                    Function::mul => 2,
+                    Function::div => 2,
+                    Function::rem => 2,
+
+                    Function::lt => 2,
+                    Function::gt => 2,
+                    Function::leq => 2,
+                    Function::geq => 2,
+                    Function::eq => 2,
+                    Function::neq => 2,
+
+                    Function::pad => 2,
+
+                    Function::asUnsigned => 1,
+                    Function::asSigned => 1,
+                    Function::asClock => 1,
+                    Function::asAsyncReset => 1,
+
+                    Function::shl => 2,
+                    Function::shr => 2,
+                    Function::dshl => 2,
+                    Function::dshr => 2,
+
+                    Function::asSignedArithmatic => 1,
+
+                    Function::neg => 1,
+
+                    Function::not => 1,
+                    Function::and => 2,
+                    Function::or => 2,
+                    Function::xor => 2,
+
+                    Function::reduce_and => 1,
+                    Function::reduce_or => 1,
+                    Function::reduce_xor => 1,
+
+                    Function::cat => 2,
+                    Function::bits => 3,
+
+                    Function::head => 2,
+                    Function::tail => 2,
+
+                    Function::mux => 3,
+                    _ => {
+                        println!("NonSimple7");
+                        return Err(CodeGenerationError::NonSimpleElement);
+                    }
+                } {
+                    return Err(CodeGenerationError::WrongNumberOfArguments);
                 }
                 output.push_str("(");
                 for argument in arguments.iter() {
@@ -381,17 +466,77 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
             ASTExpression::Atom (atom) => {
                 generate_atom(atom, identifier_list, output)?;
             },
-            _ => return Err(CodeGenerationError::NonSimpleElement)
+            _ => {
+                println!("NonSimple8");
+                return Err(CodeGenerationError::NonSimpleElement);
+            }
         }
         Ok(())
     }
 
-    let mut output = String::new();
+    fn generate_expression_simple (
+        tree : &ASTExpression,
+        identifier_list : &Vec<String>,
+        output : &mut String,
+    ) -> Result<(), CodeGenerationError> {
+        if let ASTExpression::Atom(atom) = tree {
+            generate_atom_simple(atom, identifier_list, output)?
+        } else {
+            println!("NonSimple9");
+            return Err(CodeGenerationError::NonSimpleElement);
+        }
+        Ok(())
+    }
+
+    fn generate_atom_simple (
+        tree : &ASTAtom,
+        identifier_list : &Vec<String>,
+        output : &mut String,
+    ) -> Result<(), CodeGenerationError> {
+        if let ASTAtom::Number{signed, value, width: _} = tree {
+            if *signed {
+                println!("NonSimple10");
+                return Err(CodeGenerationError::NonSimpleElement);
+            }
+            generate_number(value, output);
+        } else {
+            println!("NonSimple9");
+            return Err(CodeGenerationError::NonSimpleElement)
+        }
+        Ok(())
+    }
+
+    fn generate_number (
+        number : &Number,
+        output : &mut String,
+    ) {
+        output.push_str(match number {
+            Number::HexNumber(_) => "\"h",
+            Number::OctNumber(_) => "\"o",
+            Number::BinNumber(_) => "\"b",
+            Number::DecNumber(_) => "",
+        });
+        output.push_str(match number {
+            Number::HexNumber(num) => num,
+            Number::OctNumber(num) => num,
+            Number::BinNumber(num) => num,
+            Number::DecNumber(num) => num,
+        });
+        output.push_str(match number {
+            Number::HexNumber(_) => "\"",
+            Number::OctNumber(_) => "\"",
+            Number::BinNumber(_) => "\"",
+            Number::DecNumber(_) => "",
+        });
+    }
+
+    let mut output = "FIRRTL version 1.1.0\n".to_string();
 
     let identifier_list = ast.identifier_list;
 
     output.push_str("circuit ");
     output.push_str(ast.top_module.as_str(&identifier_list));
+    output.push_str(" :");
     for statement in ast.internals {
         generate_statement(&statement, &identifier_list, &mut output, 1)?;
     }

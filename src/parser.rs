@@ -1,11 +1,18 @@
-use pest::{Parser, iterators::Pair};
+use pest::{Parser, iterators::Pair, error};
 use pest_derive::Parser;
+use thiserror::Error;
 
 #[derive(Parser)]
 #[grammar = "parser.pest"]
 struct NHDLParser;
 
-impl <'a> AST <'a> {
+#[derive(Debug, Error)]
+pub enum ParserError<E> {
+    #[error("Failed to parse: {0}")]
+    CouldNotParse(E),
+}
+
+impl AST {
     pub fn print(&self) {
         let mut input = format!("{:?}", self);
         input = input.replace(", ", ",\n");
@@ -39,98 +46,136 @@ impl <'a> AST <'a> {
     }
 }
 
-#[derive(Debug,PartialEq, Clone, Copy)]
-pub enum Identifier <'a> {
-    UnEvaluated (&'a str),
+#[derive(Debug,PartialEq, Clone)]
+pub enum Identifier  {
+    UnEvaluated (String),
     Evaluated (usize),
 }
 
-impl <'a> Identifier <'a> {
-    pub fn as_str(&self, identifier_list : &'a Vec<String>) -> &str {
+impl Identifier {
+    pub fn as_str<'a>(&'a self, identifier_list : &'a Vec<String>) -> &'a str {
         match self {
             Identifier::UnEvaluated(str) => str,
             Identifier::Evaluated(index) => identifier_list.get(*index).unwrap(),
         }
     }
+    pub fn eq(&self, other : &Self, identifier_list : & Vec<String>) -> bool{
+        match self {
+            Identifier::UnEvaluated(self_str) => {
+                match other {
+                    Identifier::UnEvaluated(other_str) => {
+                        self_str.eq(other_str)
+                    },
+                    Identifier::Evaluated(other_index) => {
+                        self_str.eq(&identifier_list[*other_index])
+                    }
+                }
+            },
+            Identifier::Evaluated(self_index) => {
+                match other {
+                    Identifier::UnEvaluated(other_str) => {
+                        identifier_list[*self_index].eq(other_str)
+                    },
+                    Identifier::Evaluated(other_index) => {
+                        *self_index == *other_index
+                    }
+                }
+            }
+        }
+    }
+    pub fn get_index(&self) -> usize {
+        match self {
+            Identifier::UnEvaluated(str) => panic!("Tried to get index of unevaluated identifier: {}", str),
+            &Identifier::Evaluated(i) => i
+        }
+    }
 }
 
 #[derive(Debug,PartialEq, Clone)]
-pub struct AST <'a> {
-    pub top_module : Identifier<'a>,
-    pub internals: Vec<ASTStatement<'a>>,
+pub struct AST  {
+    pub top_module : Identifier,
+    pub internals: Vec<ASTStatement>,
     pub identifier_list : Vec<String>,
 }
 
 #[derive(Debug,PartialEq, Clone)]
-pub enum ASTStatement <'a> {
+pub enum ASTStatement  {
     RegisterInstance {
-        instance_name : Identifier<'a>,
-        clock : Box<ASTExpression<'a>>,
-        reset : Box<ASTExpression<'a>>,
-        initial : Box<ASTExpression<'a>>,
-        type_ : Box<ASTType<'a>>,
+        instance_name : Identifier,
+        clock : Box<ASTExpression>,
+        reset : Option<Box<ASTExpression>>,
+        initial : Option< Box<ASTExpression>>,
+        type_ : Box<ASTType>,
     },
     WireInstance {
-        instance_name : Identifier<'a>,
-        type_ : Box<ASTType<'a>>
+        instance_name : Identifier,
+        type_ : Box<ASTType>
+    },
+    ModuleInstance {
+        instance_name : Identifier,
+        type_ : Identifier,
+        generic_values : Vec<ASTExpression>,
     },
     Scope {
-        internals: Vec<ASTStatement<'a>>
+        internals: Vec<ASTStatement>
     },
     ModuleDeclaration {
-        module_name : Identifier<'a>,
-        generic_names : Vec<Identifier<'a>>,
-        io : Box<ASTType<'a>>,
-        body : Box<ASTStatement<'a>>
+        module_name : Identifier,
+        generic_names : Vec<(Identifier, Box<ASTType>)>,
+        io : Box<ASTType>,
+        body : Box<ASTStatement>
     },
     EnumDeclaration {
-        enum_name : Identifier<'a>,
-        variant_names : Vec<Identifier<'a>>,
+        enum_name : Identifier,
+        variant_names : Vec<Identifier>,
     },
     ConstantDeclaration {
-        constant_name : Identifier<'a>,
-        type_ : Box<ASTType<'a>>,
-        value : Box<ASTExpression<'a>>
+        constant_name : Identifier,
+        type_ : Box<ASTType>,
+        value : Box<ASTExpression>
     },
     StrongConnection {
-        lhs : Box<ASTAtom<'a>>,
-        rhs : Box<ASTExpression<'a>>
+        lhs : Box<ASTAtom>,
+        rhs : Box<ASTExpression>
     },
     WeakConnection {
-        lhs : Box<ASTAtom<'a>>,
-        rhs : Box<ASTExpression<'a>>
+        lhs : Box<ASTAtom>,
+        rhs : Box<ASTExpression>
     },
     If {
-        condition : Box<ASTExpression<'a>>,
-        true_body : Box<ASTStatement<'a>>,
-        false_body : Option<Box<ASTStatement<'a>>>,
+        condition : Box<ASTExpression>,
+        true_body : Box<ASTStatement>,
+        false_body : Option<Box<ASTStatement>>,
     },
     Switch {
-        condition : Box<ASTExpression<'a>>,
-        paths : Vec<(Box<ASTAtom<'a>>, Box<ASTStatement<'a>>)>
+        condition : Box<ASTExpression>,
+        paths : Vec<(Box<ASTAtom>, Box<ASTStatement>)>
     },
     Loop {
-        variable_name : Identifier<'a>,
-        from : Box<ASTExpression<'a>>,
-        to : Box<ASTExpression<'a>>,
-        body : Box<ASTStatement<'a>>
+        variable_name : Identifier,
+        from : Box<ASTExpression>,
+        to : Box<ASTExpression>,
+        body : Box<ASTStatement>
     },
+    Node {
+        name : Identifier,
+        value : Box<ASTExpression>,
+    }
 }
 
 #[derive(Debug,PartialEq, Clone)]
-pub enum ASTAtom <'a> {
+pub enum ASTAtom  {
     Empty,
-    Target(Vec<(Identifier<'a>, Option<Box<ASTExpression<'a>>>)>),
+    Target(Vec<(Identifier, Option<Box<ASTExpression>>)>),
     Enum {
-        kind : Identifier<'a>,
-        variant : Identifier<'a>,
+        kind : Identifier,
+        variant : Identifier,
     },
     Number {
         signed : bool,
         value : Number,
-        width : Option<Box<ASTExpression<'a>>>
+        width : Option<Box<ASTExpression>>
     },
-    
 }
 
 #[derive(Debug,PartialEq, Clone)]
@@ -142,40 +187,37 @@ pub enum Number {
 }
 
 #[derive(Debug,PartialEq, Clone)]
-pub enum ASTType <'a> {
+pub enum ASTType  {
     Vector {
-        type_ : Box<ASTType<'a>>,
-        size : Box<ASTExpression<'a>>
+        type_ : Box<ASTType>,
+        size : Box<ASTExpression>
     },
-    Unsigned (Box<ASTExpression<'a>>),
-    Signed (Box<ASTExpression<'a>>),
+    Unsigned (Box<ASTExpression>),
+    Signed (Box<ASTExpression>),
     Clock,
     AsyncReset,
     SyncReset,
-    Bundle (Vec<(bool, Identifier<'a>, Box<ASTType<'a>>)>),
-    Custom {
-        name : Identifier<'a>,
-        generic_instances : Option<Vec<ASTExpression<'a>>>
-    },
+    Bundle (Vec<(bool, Identifier, Box<ASTType>)>),
+    Enum (Identifier),
 }
 
 #[derive(Debug,PartialEq, Clone)]
-pub enum ASTExpression <'a> {
+pub enum ASTExpression  {
     BinaryOperation {
-        lhs : Box<ASTExpression<'a>>,
+        lhs : Box<ASTExpression>,
         operation : BinaryOperation,
-        rhs : Box<ASTExpression<'a>>
+        rhs : Box<ASTExpression>
     },
     UnaryOperation {
         operation : UnaryOperation,
-        content : Box<ASTExpression<'a>>
+        content : Box<ASTExpression>
     },
-    Bundle (Vec<(bool, Identifier<'a>, Box<ASTExpression<'a>>)>),
+    Bundle (Vec<(Identifier, Box<ASTExpression>)>),
     Function {
         function : Function,
-        arguments : Vec<ASTExpression<'a>>
+        arguments : Vec<ASTExpression>
     },
-    Atom (Box<ASTAtom<'a>>),
+    Atom (Box<ASTAtom>),
 }
 
 #[derive(Debug,PartialEq, Clone, Copy)]
@@ -264,10 +306,10 @@ pub enum Function {
     mux,
 }
 
-pub fn parse_nhdl(input : &str) -> AST{
+pub fn parse_nhdl(input : &str) -> Result<AST, ParserError<error::Error<Rule>>>{
     let tree = match NHDLParser::parse(Rule::Top, input) {
         Ok(mut p) => p.next().unwrap(),
-        Err(e) => panic!("{}", e),
+        Err(e) => return Err(ParserError::CouldNotParse(e)),
     };
 
     fn generate_ast(tree : Pair<Rule>) -> AST {
@@ -275,7 +317,7 @@ pub fn parse_nhdl(input : &str) -> AST{
             Rule::OuterScope => {
                 let mut inner = tree.into_inner();
                 AST {
-                    top_module: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
+                    top_module: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
                     internals: inner.map(parse_statement).collect(),
                     identifier_list : vec![],
                 }
@@ -288,34 +330,61 @@ pub fn parse_nhdl(input : &str) -> AST{
         match tree.as_rule() {
             Rule::RegisterInstanciation => {
                 let mut inner = tree.into_inner();
+                let instance_name = Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string());
+                let clock = Box::new(parse_expression(inner.next().unwrap()));
+                let reset = if let Rule::Expression = inner.peek().unwrap().as_rule() {
+                    Some(Box::new(parse_expression(inner.next().unwrap())))
+                } else {None};
+                let initial = if let Rule::Expression = inner.peek().unwrap().as_rule() {
+                    Some(Box::new(parse_expression(inner.next().unwrap())))
+                } else {None};
+                let type_= Box::new(parse_type(inner.next().unwrap()));
                 ASTStatement::RegisterInstance {
-                    instance_name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
-                    clock : Box::new(parse_expression(inner.next().unwrap())),
-                    reset : Box::new(parse_expression(inner.next().unwrap())),
-                    initial : Box::new(parse_expression(inner.next().unwrap())),
-                    type_: Box::new(parse_type(inner.next().unwrap()))
+                    instance_name: instance_name,
+                    clock : clock,
+                    reset : reset,
+                    initial : initial,
+                    type_: type_
                 }
             }
             Rule::WireInstanciation => {
                 let mut inner = tree.into_inner();
                 ASTStatement::WireInstance {
-                    instance_name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
+                    instance_name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
                     type_: Box::new(parse_type(inner.next().unwrap()))
                 }
             }
+            Rule::ModuleInstance => {
+                let mut inner = tree.into_inner();
+                
+                ASTStatement::ModuleInstance {
+                    instance_name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                    type_: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                    generic_values: inner.map(parse_expression).collect()
+                }
+            },
             Rule::Scope => ASTStatement::Scope {
                 internals: tree.into_inner().map(parse_statement).collect(),
             },
             Rule::ModuleDeclaration => {
                 let mut inner = tree.into_inner();
-                let module_name = Identifier::UnEvaluated(inner.next().unwrap().as_str());
+                let module_name = Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string());
                 let mut generic_names = vec![];
                 
                 let mut next = inner.next().unwrap();
                 if let Rule::GenericConstant = next.as_rule() {
-                    generic_names.append(&mut
-                        next.into_inner().map(|n| Identifier::UnEvaluated(n.as_str())).collect()
-                    );
+                    {
+                        let mut inner = next.into_inner();
+                        loop {
+                            generic_names.push((
+                                Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                                Box::new(parse_type(inner.next().unwrap()))
+                            ));
+                            if inner.peek().is_none() {
+                                break;
+                            }
+                        }
+                    }
                     next = inner.next().unwrap();
                 }
 
@@ -329,14 +398,14 @@ pub fn parse_nhdl(input : &str) -> AST{
             Rule::EnumDeclaration => {
                 let mut inner = tree.into_inner();
                 ASTStatement::EnumDeclaration {
-                    enum_name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
-                    variant_names: inner.map(|n|Identifier::UnEvaluated(n.as_str())).collect()
+                    enum_name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                    variant_names: inner.map(|n|Identifier::UnEvaluated(n.as_str().to_string())).collect()
                 }
             },
             Rule::ConstantDeclaration => {
                 let mut inner = tree.into_inner();
                 ASTStatement::ConstantDeclaration {
-                    constant_name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
+                    constant_name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
                     type_: Box::new(parse_type(inner.next().unwrap())),
                     value: Box::new(parse_expression(inner.next().unwrap()))
                 }
@@ -383,10 +452,17 @@ pub fn parse_nhdl(input : &str) -> AST{
             Rule::Loop => {
                 let mut inner = tree.into_inner();
                 ASTStatement::Loop {
-                    variable_name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
+                    variable_name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
                     from: Box::new(parse_expression(inner.next().unwrap())),
                     to: Box::new(parse_expression(inner.next().unwrap())),
                     body: Box::new(parse_statement(inner.next().unwrap()))
+                }
+            },
+            Rule::Node => {
+                let mut inner = tree.into_inner();
+                ASTStatement::Node {
+                    name: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                    value: Box::new(parse_expression(inner.next().unwrap())), 
                 }
             },
             _ => unreachable!(),
@@ -403,7 +479,7 @@ pub fn parse_nhdl(input : &str) -> AST{
                 let mut output = vec![];
                 while let Some(n) = inner.next() {
                     output.push((
-                        Identifier::UnEvaluated(n.as_str()),
+                        Identifier::UnEvaluated(n.as_str().to_string()),
                         if let Some(Rule::Expression) = inner.peek().map(|n|n.as_rule()) {
                             Some(Box::new(parse_expression(inner.next().unwrap())))
                         } else {None}
@@ -415,8 +491,8 @@ pub fn parse_nhdl(input : &str) -> AST{
             Rule::EnumVariant => {
                 let mut inner = tree.into_inner();
                 ASTAtom::Enum {
-                    kind: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
-                    variant: Identifier::UnEvaluated(inner.next().unwrap().as_str())
+                    kind: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                    variant: Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string())
                 }
             },
             Rule::Number => {
@@ -427,9 +503,9 @@ pub fn parse_nhdl(input : &str) -> AST{
                     value: {
                         let tree = inner.next().unwrap();
                         match tree.as_rule() {
-                            Rule::HexNumber => Number::HexNumber((&tree.as_str()[2..]).to_string()),
-                            Rule::OctNumber => Number::OctNumber((&tree.as_str()[2..]).to_string()),
-                            Rule::BinNumber => Number::BinNumber((&tree.as_str()[2..]).to_string()),
+                            Rule::HexNumber => Number::HexNumber((&tree.as_str()[1..]).to_string()),
+                            Rule::OctNumber => Number::OctNumber((&tree.as_str()[1..]).to_string()),
+                            Rule::BinNumber => Number::BinNumber((&tree.as_str()[1..]).to_string()),
                             Rule::DecNumber => Number::DecNumber(tree.as_str().to_string()),
                             _ => unreachable!(),
                         }
@@ -475,25 +551,32 @@ pub fn parse_nhdl(input : &str) -> AST{
                     }
                     output.push((
                         flipped,
-                        Identifier::UnEvaluated(n.as_str()),
+                        Identifier::UnEvaluated(n.as_str().to_string()),
                         Box::new(parse_type(inner.next().unwrap()))
                     ))
                 }
 
                 ASTType::Bundle(output)
             },
-            Rule::Custom => {
+            Rule::IOTypeBundle => {
                 let mut inner = tree.into_inner();
-
-                ASTType::Custom {
-                    name: Identifier::UnEvaluated(inner.next().unwrap().as_str()),
-                    generic_instances: if let Some(_) = inner.peek() {
-                        Some(inner.map(parse_expression).collect())
-                    } else {
-                        None
-                    }
+                
+                let mut output = vec![];
+                while let Some(mut n) = inner.next() {
+                    let flipped = n.as_str().eq("out");
+                    output.push((
+                        flipped,
+                        Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()),
+                        Box::new(parse_type(inner.next().unwrap()))
+                    ))
                 }
-            }
+
+                ASTType::Bundle(output)
+            },
+            Rule::EnumType => {
+                let mut inner = tree.into_inner();
+                ASTType::Enum(Identifier::UnEvaluated(inner.next().unwrap().as_str().to_string()))
+            },
             _ => unreachable!()
 
         }
@@ -568,14 +651,8 @@ pub fn parse_nhdl(input : &str) -> AST{
                 
                 let mut output = vec![];
                 while let Some(mut n) = inner.next() {
-                    let mut flipped = false;
-                    if let Rule::Flip = n.as_rule() {
-                        flipped = true;
-                        n = inner.next().unwrap();
-                    }
                     output.push((
-                        flipped,
-                        Identifier::UnEvaluated(n.as_str()),
+                        Identifier::UnEvaluated(n.as_str().to_string()),
                         Box::new(parse_expression(inner.next().unwrap()))
                     ))
                 }
@@ -645,7 +722,10 @@ pub fn parse_nhdl(input : &str) -> AST{
                     arguments: inner.map(parse_expression).collect()
                 }
             },
-            _ => unreachable!(),
+            _ => {
+                println!("{}", tree.as_str());
+                unreachable!()
+            },
         }
     }
 
@@ -678,8 +758,12 @@ pub fn parse_nhdl(input : &str) -> AST{
                 } => {
                     evaluate(instance_name, identifier_list);
                     evaluate_expression(clock, identifier_list);
-                    evaluate_expression(reset, identifier_list);
-                    evaluate_expression(initial, identifier_list);
+                    if let Some(reset) = reset {
+                        evaluate_expression(reset, identifier_list);
+                        if let Some(initial) = initial {
+                            evaluate_expression(initial, identifier_list);
+                        }
+                    }
                     evaluate_type(type_, identifier_list);
                 },
                 ASTStatement::WireInstance {
@@ -688,6 +772,17 @@ pub fn parse_nhdl(input : &str) -> AST{
                 } => {
                     evaluate(instance_name, identifier_list);
                     evaluate_type(type_, identifier_list);
+                },
+                ASTStatement::ModuleInstance {
+                    instance_name,
+                    type_,
+                    generic_values
+                } => {
+                    evaluate(instance_name, identifier_list);
+                    evaluate(type_, identifier_list);
+                    for generic in generic_values.iter_mut() {
+                        evaluate_expression(generic, identifier_list);
+                    }
                 },
                 ASTStatement::Scope {
                     internals
@@ -703,8 +798,9 @@ pub fn parse_nhdl(input : &str) -> AST{
                     body
                 } => {
                     evaluate(module_name, identifier_list);
-                    for generic in generic_names.iter_mut() {
+                    for (generic, type_) in generic_names.iter_mut() {
                         evaluate(generic, identifier_list);
+                        evaluate_type(type_, identifier_list)
                     }
                     evaluate_type(io, identifier_list);
                     evaluate_statement(body, identifier_list);
@@ -773,6 +869,13 @@ pub fn parse_nhdl(input : &str) -> AST{
                     evaluate_expression(to, identifier_list);
                     evaluate_statement(body, identifier_list);
                 },
+                ASTStatement::Node { 
+                    name, 
+                    value 
+                } => {
+                    evaluate(name, identifier_list);
+                    evaluate_expression(value, identifier_list);
+                }
             }
         }
 
@@ -818,17 +921,6 @@ pub fn parse_nhdl(input : &str) -> AST{
                         evaluate_type(type_, identifier_list);
                     }
                 },
-                ASTType::Custom {
-                    name,
-                    generic_instances,
-                } => {
-                    evaluate(name, identifier_list);
-                    if let Some(generic_instances) = generic_instances {
-                        for generic in generic_instances.iter_mut() {
-                            evaluate_expression(generic, identifier_list);
-                        }
-                    }
-                },
                 _ => ()
             }
         }
@@ -850,7 +942,7 @@ pub fn parse_nhdl(input : &str) -> AST{
                     evaluate_expression(content, identifier_list);
                 },
                 ASTExpression::Bundle (inner) => {
-                    for (_, name, expression) in inner.iter_mut() {
+                    for (name, expression) in inner.iter_mut() {
                         evaluate(name, identifier_list);
                         evaluate_expression(expression, identifier_list);
                     }
@@ -869,11 +961,12 @@ pub fn parse_nhdl(input : &str) -> AST{
             }
         }
 
+        evaluate(&mut tree.top_module, &mut tree.identifier_list);
         for i in tree.internals.iter_mut() {
             evaluate_statement(i, &mut tree.identifier_list);
         }
         tree
     }
 
-    evaluate_identifiers(generate_ast(tree))
+    Ok(evaluate_identifiers(generate_ast(tree)))
 }

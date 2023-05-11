@@ -1,0 +1,33 @@
+top : top;
+
+const width : u[8] = 18;
+
+module top (
+    in clk : clock,
+    in next : u[1],
+    out output : u[width]
+) {
+    mod register : shift < width >;
+    register.next <= next;
+    register.clk <= clk;
+    output <= register.output;
+}
+
+module shift < w : u[8] > (
+    in clk : clock,
+    in next : u[1],
+    out output : u[w]
+) {
+    reg state {
+        clock : clk
+    } : [u[1] : w];
+    
+    state[0] <= next; 
+    node out : state[0];
+
+    loop (i : 1..w) {
+        state[i] <= state[i - 1];
+        node out : state[i] | out;
+    }
+    output <= out;
+}

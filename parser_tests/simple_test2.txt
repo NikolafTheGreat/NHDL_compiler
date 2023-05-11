@@ -1,0 +1,5 @@
+top : MyModule;
+
+module MyModule (a : u[u32], b : s[u3], flip out : [s[u3] : u2])
+    n <= sx-abc+u2+u1*s-3;
+

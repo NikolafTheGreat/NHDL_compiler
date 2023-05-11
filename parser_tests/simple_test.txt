@@ -1,6 +1,6 @@
 top : MyModule;
 
-module MyModule (input : (a : u[u32], b : s[u3],), flip output : [s[u3] : u2]) {
+module MyModule (a : u[u32], b : s[u3], flip out : [s[u3] : u2]) {
     n <= uxabc+u2+u1*u3;
     if (u2+u1 > u2) {
         n <- s2;

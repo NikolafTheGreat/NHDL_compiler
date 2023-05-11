@@ -1,4 +1,0 @@
-
-component ShiftRegister <i> (flip output : U(i), input : U(1), clk : clock, r) {
-
-}

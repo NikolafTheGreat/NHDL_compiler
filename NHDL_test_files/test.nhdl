@@ -1,7 +1,0 @@
-
-
-component MyModule (flip a : u46) {
-    if (1) {
-
-    }
-}

@@ -22,14 +22,14 @@ Definition = _{
 }
 
 Declaration = _{
-    RegisterInstanciation|WireInstanciation
+    RegisterInstanciation|WireInstanciation|ModuleInstance
 }
 
 RegisterInstanciation = {
     "reg" ~ Identifier ~
     "{" ~ "clock" ~ ":" ~ Expression ~
-    "," ~ "reset" ~ ":" ~ Expression ~ 
-    "," ~ "initial" ~ ":" ~ Expression ~ ","? ~
+    ("," ~ "reset" ~ ":" ~ Expression ~ 
+    "," ~ "initial" ~ ":" ~ Expression )? ~ ","? ~
     "}" ~ ":" ~ Type ~ ";"
 }
 
@@ -37,31 +37,35 @@ WireInstanciation = {
     "wire" ~ Identifier ~ ":" ~ Type ~ ";"
 }
 
+ModuleInstance = {
+    "mod" ~ Identifier ~ ":" ~ Identifier ~ ("<" ~ (Expression ~ ",")* ~ Expression? ~ ">")? ~ ";"
+}
+
 //Statements
 Statement = _{
-    Scope|Connection|If|Switch
+    Scope|Connection|If|Switch|Loop|Node
 }
 
 Scope = {
-    "{" ~ (Definition|Loop|Declaration|Statement)* ~ "}"
+    "{" ~ (Statement|Declaration)* ~ "}"
 }
 
 ModuleDeclaration = {
-    "module" ~ Identifier ~ GenericConstant? ~ TypeBundle ~ Statement
+    "module" ~ Identifier ~ GenericConstant? ~ IOTypeBundle ~ Statement
 }
 
 GenericConstant = {
-    "<" ~ (Identifier ~ ",")* ~ Identifier? ~ ">"
+    "<" ~ (Identifier ~ ":" ~ ConstantType ~ ",")* ~ (Identifier ~ ":" ~ ConstantType)? ~ ">"
 }
 
 EnumDeclaration = {
     "enum" ~ Identifier ~ "{" ~ 
-        (Identifier ~ "::" ~ ",")* ~ Identifier? ~
+        (Identifier ~ ",")* ~ Identifier? ~
     "}"
 }
 
 ConstantDeclaration = {
-    "const" ~ Identifier ~ ":" ~ Type ~ "=" ~ Expression ~ ";"
+    "const" ~ Identifier ~ ":" ~ ConstantType ~ "=" ~ Expression ~ ";"
 }
 
 Connection = _{
@@ -69,11 +73,11 @@ Connection = _{
 }
 
 StrongConnection = {
-    Target ~ "<=" ~ Expression ~ ";"
+    Target ~ "<=" ~ (Expression | EnumVariant) ~ ";"
 }
 
 WeakConnection = {
-    Target ~ "<-" ~ Expression ~ ";"
+    Target ~ "<-" ~ (Expression | EnumVariant) ~ ";"
 }
 
 If = {
@@ -113,7 +117,11 @@ Empty = {
 }
 
 Loop = {
-    "loop"~ "(" ~ Identifier ~ ":" ~ Expression ~ ".." ~ Expression ~ ")" ~ Statement 
+    "loop" ~ "(" ~ Identifier ~ ":" ~ Expression ~ ".." ~ Expression ~ ")" ~ Statement 
+}
+
+Node = {
+    "node" ~ Identifier ~ ":" ~ Expression ~ ";"
 }
 
 //Identifiers
@@ -126,7 +134,7 @@ Target = {
 }
 
 Number = ${
-    ("s"|"u") ~ (HexNumber | OctNumber | BinNumber | DecNumber) ~ ("[" ~ Expression ~ "]")?
+    ("s"|"u")? ~ "-"? ~ (HexNumber | OctNumber | BinNumber | DecNumber) ~ ("[" ~ Expression ~ "]")?
 }
 
 HexNumber = @{
@@ -142,7 +150,7 @@ BinNumber = @{
 }
 
 DecNumber = @{
-    ASCII_DIGIT+
+    "-"? ~ ASCII_DIGIT+
 }
 
 EnumVariant = ${
@@ -157,18 +165,23 @@ Type = _{
     Clock |
     Reset |
     TypeBundle |
-    Custom
+    EnumType
+}
+
+ConstantType = _{
+    Signed |
+    Unsigned
 }
 
 Vector = {
-    "[" ~ Type ~ ":" ~ Number ~ "]"
+    "[" ~ Type ~ ":" ~ Expression ~ "]"
 }
 
-Unsigned = ${
+Unsigned = {
     "u[" ~ Expression ~ "]"
 }
 
-Signed = ${
+Signed = {
     "s[" ~ Expression ~ "]"
 }
 
@@ -186,6 +199,14 @@ AsyncReset = {
     "async_reset"
 }
 
+IOTypeBundle = {
+    "(" ~ (InOut ~ Identifier ~ ":" ~ Type ~ ",")* ~ (InOut ~ Identifier ~ ":" ~ Type)? ~ ")"
+}
+
+InOut = {
+    ("in" | "out")
+}
+
 TypeBundle = {
     "(" ~ (Flip? ~ Identifier ~ ":" ~ Type ~ ",")* ~ (Flip? ~ Identifier ~ ":" ~ Type)? ~ ")"
 }
@@ -194,8 +215,8 @@ Flip = {
     "flip"
 }
 
-Custom = {
-    Identifier ~ ("<" ~ Target+ ~ ">")
+EnumType = {
+    Identifier
 }
 
 //Expressions
@@ -256,13 +277,12 @@ Atom = _{
     "(" ~ Expression ~ ")"|
     Function|
     Number|
-    EnumVariant|
     Target|
     ExpressionBundle
 }
 
 ExpressionBundle = {
-    "(" ~ (Flip? ~ Identifier ~ ":" ~ Expression ~ ",")* ~ (Flip? ~ Identifier ~ ":" ~ Expression)? ~ ")"
+    "(" ~ (Identifier ~ ":" ~ Expression ~ ",")* ~ (Identifier ~ ":" ~ Expression)? ~ ")"
 }
 
 Function = {

@@ -1,0 +1,15 @@
+top : blink;
+
+module blink (in clk: clock, in res : reset, out out: u[1]) {
+    reg state {
+        clock : clk,
+        reset : res,
+        initial : 0
+    } : u[1];
+    out <= state;
+    if (state) {
+        state <= !state;
+    } else {
+        
+    }
+}

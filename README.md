@@ -1,7 +1,7 @@
 # NHDL_compiler
-A compiler written from first principles for the purpose of exploring the process of compiling digital circuits from a high level HDL. 
+A compiler written from first principles for the purpose of exploring the process of compiling digital circuits from a high-level HDL. 
 
-Project was originally written as a bachelor project for a degree in Electrical Engineering at DTU.
+This project was initially written as a bachelor project for a degree in Electrical Engineering at DTU.
 
 ## Directory structure
 
@@ -9,9 +9,9 @@ Project was originally written as a bachelor project for a degree in Electrical 
 A series of programs written in NHDL that exemplify language features.
 
 ### parser_tests
-A series of input programs used to test the parser. They are here for documentation reasons.
+A series of input programs are used to test the parser. They are here for documentation reasons.
 
 ## Upkeep
-Despite this being a public repocitory I do not currently intend to support this project because of future schooling.
+Despite this being a public repository I do not currently intend to support this project because of future schooling.
 
-There is a possibility of future updates once I get more time. However do expect the program structure and associated hardware description language will redically change if this case.
+There is a possibility of future updates once I get more time. However,  expect the program structure and associated hardware description language will radically change in this case.

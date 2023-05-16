@@ -1,4 +1,10 @@
-use crate::parser::{ASTExpression, AST, ASTAtom, BinaryOperation, UnaryOperation, Function};
+/*
++------------------------------------------------------------------------------------------------+
+| This file contains the functionality used to reduce constant expressions down to single values |
++------------------------------------------------------------------------------------------------+
+*/
+
+use crate::parser::{ASTExpression, ASTAtom, BinaryOperation, UnaryOperation, Function};
 use super::constant::{Constant, ConstantError};
 use thiserror::Error;
 
@@ -128,7 +134,7 @@ pub fn evaluate_constant_expression (
             function,
             arguments
         } => {
-            let mut arguments = {
+            let arguments = {
                 let mut out = vec![];
                 for argument in arguments {
                     out.push(evaluate_constant_expression(argument)?)

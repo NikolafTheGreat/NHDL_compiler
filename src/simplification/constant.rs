@@ -1,3 +1,10 @@
+/*
++-------------------------------------------------------------------------------------+
+| This file contains a data type used for the simplification of constant expressions. |
+| It acts as an integer with arbitrary bit width                                      |
++-------------------------------------------------------------------------------------+
+*/
+
 use num::{BigInt};
 
 use thiserror::Error;

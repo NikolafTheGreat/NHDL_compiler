@@ -12,6 +12,7 @@ mod code_generation;
 
 fn main() { 
     
+    //Section used to test the operations of the constant types.
     /*{
         use simplification::constant::Constant;
         let mut a = Constant::from_dec("-333");
@@ -38,6 +39,7 @@ fn main() {
         );
     }*/
     
+    // Reading command line arguments
     let in_path = if let Some(s) = env::args().nth(1) { s } else {
         eprintln!("Not enough arguments provided. Please provide the path to the source.");
         process::exit(1);
@@ -57,6 +59,7 @@ fn main() {
         path
     };
     
+    //Parsing the input
     let ast = match parser::parse_nhdl(&input) {
         Ok(ast) => ast,
         Err(e) => {
@@ -66,6 +69,7 @@ fn main() {
     };
     //ast.print();
 
+    //Simplifying complex language features
     let ast = match simplification::simplify::simplify(ast) {
         Ok(ast) => ast,
         Err(e) => {
@@ -74,6 +78,7 @@ fn main() {
         }
     };
 
+    //Generating the outpuut representation
     let output = match code_generation::generate_code(ast) {
         Ok(str) => str,
         Err(e) => {
@@ -82,6 +87,7 @@ fn main() {
         }
     };
 
+    //Writing the output to a file
     match fs::write(out_path, output) {
         Ok(_) => (),
         Err(e) => {

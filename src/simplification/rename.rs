@@ -1,3 +1,9 @@
+/*
++--------------------------------------------------------------------------------------------+
+| An unused bit of functionality used to rename a certain identifier in some part of the AST |
++--------------------------------------------------------------------------------------------+
+*/
+
 use crate::parser::{ASTStatement, ASTAtom, ASTType, ASTExpression, Identifier};
 
 pub fn rename(ast : &mut ASTStatement, identifier_list : &mut Vec<String>, target : &str, mut name : String) {

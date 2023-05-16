@@ -1,3 +1,12 @@
+/*
++---------------------------------------------------------------------+
+| This file contains the entirety of the parsing step in compilation: |
+|   * Use pest to generate the parse tree                             |
+|   * Discard excess information to generate the AST                  |
+|   * Gather all identifiers into a list for later use                |
++---------------------------------------------------------------------+
+*/
+
 use pest::{Parser, iterators::Pair, error};
 use pest_derive::Parser;
 use thiserror::Error;

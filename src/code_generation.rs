@@ -1,3 +1,8 @@
+/*
++------------------------------------------------------------------------------------------------------------------------------+
+| This file contains the functionality to take the simplified abstract syntax tree and convert it into the final FIRRTL output |
++------------------------------------------------------------------------------------------------------------------------------+
+*/
 
 use super::parser::{AST, ASTStatement, ASTAtom, ASTType, ASTExpression, Number, BinaryOperation, UnaryOperation, Function};
 
@@ -490,7 +495,7 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
 
     fn generate_atom_simple (
         tree : &ASTAtom,
-        identifier_list : &Vec<String>,
+        _identifier_list : &Vec<String>,
         output : &mut String,
     ) -> Result<(), CodeGenerationError> {
         if let ASTAtom::Number{signed, value, width: _} = tree {

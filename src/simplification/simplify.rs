@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+/*
++----------------------------------------------------------------------------------------------------------------------------------+
+| This file contains the functionality to simplify the complex language features into something that can be translated into FIRRTL |
++----------------------------------------------------------------------------------------------------------------------------------+
+*/
 
 use crate::parser::{AST, ASTStatement, ASTType, Identifier, ASTExpression, ASTAtom, Number, BinaryOperation};
 use super::{definition_list::{DefinitonList, DefinitonListError}, replace_constant::replace_constant_in_statement, evaluate_constant_expression::{evaluate_constant_expression, ConstantEvalError}, constant::Constant};

@@ -1,3 +1,9 @@
+/*
++--------------------------------------------------------------------------------------------------------+
+| This file contains the functionality needed to replcace an identifier in an expression with it's value |
++--------------------------------------------------------------------------------------------------------+
+*/
+
 use crate::parser::{ASTExpression, ASTAtom, Identifier, ASTType, ASTStatement};
 
 pub fn replace_constant_in_expression(

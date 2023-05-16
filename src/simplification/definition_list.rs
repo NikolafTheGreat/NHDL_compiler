@@ -1,3 +1,8 @@
+/*
++------------------------------------------------------------------------------------------------------------------------------+
+| This file contains the symbol table used for the syntactic analysis and the simplification of higher level language features |
++------------------------------------------------------------------------------------------------------------------------------+
+*/
 
 use thiserror::Error;
 

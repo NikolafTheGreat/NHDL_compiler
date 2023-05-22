@@ -905,6 +905,15 @@ pub fn parse_nhdl(input : &str) -> Result<AST, ParserError<error::Error<Rule>>>{
                     evaluate(kind, identifier_list);
                     evaluate(variant, identifier_list);
                 },
+                ASTAtom::Number {
+                    signed:_, 
+                    value:_, 
+                    width 
+                } => {
+                    if let Some(width) = width {
+                        evaluate_expression(width, identifier_list);
+                    }
+                },
                 _ => ()
             }
         }

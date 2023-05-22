@@ -339,7 +339,7 @@ pub fn generate_code(ast : AST) -> Result<String, CodeGenerationError> {
             } => {
                 match operation {
                     UnaryOperation::Negate => output.push_str("neg"),
-                    UnaryOperation::Not => output.push_str("neg"),
+                    UnaryOperation::Not => output.push_str("not"),
                 }
                 output.push_str("(");
                 generate_expression(content, identifier_list, output)?;

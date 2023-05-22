@@ -67,7 +67,7 @@ fn main() {
             process::exit(1);
         }
     };
-    //ast.print();
+    ast.print();
 
     //Simplifying complex language features
     let ast = match simplification::simplify::simplify(ast) {

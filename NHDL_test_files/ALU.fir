@@ -17,4 +17,4 @@ circuit ALU__INSTANCE0__ :
           when eq(UInt(3), sel) :
             o <- div(a, b)
           else :
-            o <- UInt(0)
+            o <- SInt<"b00010010">(0)

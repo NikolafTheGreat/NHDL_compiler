@@ -7,9 +7,5 @@ module blink (in clk: clock, in res : reset, out out: u[1]) {
         initial : 0
     } : u[1];
     out <= state;
-    if (state) {
-        state <= !state;
-    } else {
-        
-    }
+    state <= !state;
 }

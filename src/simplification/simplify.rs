@@ -243,7 +243,7 @@ fn simplify_statement (
             {
                 let mut path = path.into_iter();
                 if let Some((variant, body)) = path.next() {
-                    let variant = simplify_atom(*variant, definition_list, identifier_list)?;
+                    let variant = simplify_atom(*variant, definition_list, new_internals, identifier_list)?;
                     let body = simplify_statement(*body, definition_list, new_internals, identifier_list)?;
                     let body = collapse_statements(body);
                     if let ASTAtom::Empty = variant {
@@ -313,7 +313,7 @@ fn simplify_expression (
 ) -> Result<ASTExpression, DefinitonListError> {
     match expression {
         ASTExpression::Atom(atom) => {
-            let atom = simplify_atom(*atom, definition_list, identifier_list)?;
+            let atom = simplify_atom(*atom, definition_list, new_internals, identifier_list)?;
             Ok(ASTExpression::Atom(Box::new(atom)))
         },
         ASTExpression::BinaryOperation {
@@ -360,6 +360,7 @@ fn simplify_expression (
 fn simplify_atom (
     atom : ASTAtom, 
     definition_list : & mut DefinitonList,
+    new_internals : & mut Vec<ASTStatement>,
     identifier_list : & mut Vec<String>
 ) -> Result<ASTAtom, DefinitonListError> {
     match atom {
@@ -376,6 +377,14 @@ fn simplify_atom (
             value, 
             width 
         } => {
+            let width = if let Some(width) = width {
+                Some(Box::new(ASTExpression::Atom(Box::new(
+                    evaluate_constant_expression(*width)
+                    .map_err(|e| DefinitonListError::ConstantEvalError(e))?.as_atom()
+                ))))
+            } else {
+                None
+            };
             Ok(ASTAtom::Number { signed: signed, value: value, width: width })
         },
         ASTAtom::Target(t) => {

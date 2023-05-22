@@ -29,7 +29,7 @@ module ALU (
             o <- a / b;
         },
         _ : {
-            o <- 0;
+            o <- s0[width];
         }
     }
 }
